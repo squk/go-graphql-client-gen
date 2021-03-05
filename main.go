@@ -54,6 +54,9 @@ func generateFromSchema() {
 		switch t.Kind {
 		case ast.Scalar:
 			id := getTypeName(t)
+			if id == "string" {
+				continue // skip
+			}
 			scalars.Type().Id(id).String().Comment("all scalars are treated as strings")
 		case ast.Object:
 			generateTypeDefinition(objects, t)
@@ -70,13 +73,15 @@ func generateFromSchema() {
 }
 
 func generateTypeDefinition(f *File, t *ast.Definition) error {
-	f.Comment(strcase.ToScreamingSnake(string(t.Kind)))
-
 	fields := make([]Code, len(t.Fields))
 	for i, v := range t.Fields {
 		id := strcase.ToCamel(v.Name)
-		tags := map[string]string{"graphql": v.Name}
-		fields[i] = Id(id).Id(getFieldType(v)).Tag(tags)
+		tags := map[string]string{
+			"graphql": v.Name,
+			"json":    fmt.Sprintf("%s,%s", v.Name, "omitempty"),
+		}
+		comment := fmt.Sprintf("%s %s", v.Name, v.Type.String())
+		fields[i] = Id(id).Add(getGoType(v.Type)...).Tag(tags).Comment(comment)
 	}
 
 	id := getTypeName(t)
@@ -87,8 +92,6 @@ func generateTypeDefinition(f *File, t *ast.Definition) error {
 }
 
 func generateEnumDefinition(f *File, t *ast.Definition) error {
-	f.Comment(strcase.ToScreamingSnake(string(t.Kind)))
-
 	enumTypeName := strcase.ToCamel(t.Name)
 	f.Type().Id(enumTypeName).Int()
 
@@ -137,22 +140,31 @@ var typeMap map[string]string = map[string]string{
 	"Int":     "int",
 }
 
-func getFieldType(f *ast.FieldDefinition) string {
-	name := f.Type.NamedType
+func getGoType(t *ast.Type) (codes []Code) {
+	if !t.NonNull {
+		codes = append(codes, Op("*"))
+	}
 
-	// look up the typename in schema and use the same generated type
-	// identifier as when creating the type defintion
-	for _, t := range schema.Types {
-		if t.Name == f.Type.NamedType {
-			name = getTypeName(t)
-			break
+	var name string
+
+	if t.NamedType == "" {
+		codes = append(codes, Index())
+	} else if n, ok := typeMap[t.NamedType]; ok { // build-int go type?
+		name = n
+	} else {
+		// look up the typename in schema and use the same generated type
+		// identifier as when creating the type defintion
+		for _, td := range schema.Types {
+			if td.Name == t.NamedType {
+				name = getTypeName(td)
+				break
+			}
 		}
 	}
 
-	if t, ok := typeMap[name]; ok {
-		fmt.Println(t)
-		name = t
+	codes = append(codes, Id(name))
+	if t.Elem != nil {
+		codes = append(codes, getGoType(t.Elem)...)
 	}
-
-	return name
+	return codes
 }
