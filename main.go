@@ -133,7 +133,7 @@ func getTypeName(t *ast.Definition) string {
 
 // typeMap is a map of GraphQL scalar types to Go types
 var typeMap map[string]string = map[string]string{
-	"boolean": "bool",
+	"Boolean": "bool",
 	"string":  "string",
 	"numeric": "float32",
 	"float":   "float32",
