@@ -3,7 +3,9 @@ package gen
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sort"
+	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/vektah/gqlparser"
@@ -78,6 +80,11 @@ func WithSchemaFile(filename string) GeneratorOption {
 }
 
 func (g *Generator) Run() {
+	g.generateTypes()
+	g.generateQueries()
+}
+
+func (g *Generator) generateTypes() {
 	enums := NewFile(g.Package)
 	scalars := NewFile(g.Package)
 	input := NewFile(g.Package)
@@ -116,6 +123,46 @@ func (g *Generator) Run() {
 		case ast.InputObject:
 			g.generateTypeDefinition(input, t)
 		}
+	}
+}
+
+func (g *Generator) generateQueries() {
+	f := NewFile(g.Package)
+	defer f.Save("types/queries.go")
+
+	fields := g.Schema.Query.Fields
+	sort.SliceStable(fields, func(i, j int) bool {
+		return strings.Compare(fields[i].Name, fields[j].Name) == -1
+	})
+
+	for _, field := range fields {
+		// generate funciton comments
+		var comment string
+		comment += field.Description
+		for _, arg := range field.Arguments {
+			argId := getLowerId(arg.Name)
+			comment += fmt.Sprintf("\n\t%s - %s", argId, arg.Description)
+		}
+		f.Comment(comment)
+
+		// generate function
+		id := strcase.ToCamel(field.Name)
+		funcz := Func().Id(id).ParamsFunc(
+			func(pg *Group) {
+				for _, arg := range field.Arguments {
+					argId := getLowerId(arg.Name)
+					pg.Add(Id(argId).Add(g.getGoType(arg.Type)...)) //.Comment(arg.Description))
+
+				}
+			},
+		).Params(Op("*").Id(id), Error()).Block(
+		//Qual("github.com/opentracing/opentracing-go", "StartSpanFromContext").Call().Comment("Import is automatically added."),
+		)
+
+		fmt.Println(funcz.Render(os.Stdout))
+		//fmt.Printf("%#v\n\n", c)
+
+		f.Add(funcz)
 	}
 }
 
@@ -188,13 +235,13 @@ var typeMap map[string]string = map[string]string{
 }
 
 func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
-	if !t.NonNull {
+	if !t.NonNull && t.NamedType != "" {
 		codes = append(codes, Op("*"))
 	}
 
 	var name string
 
-	if t.NamedType == "" {
+	if t.NamedType == "" { // array
 		codes = append(codes, Index())
 	} else if n, ok := typeMap[t.NamedType]; ok { // build-int go type?
 		name = n
@@ -214,4 +261,13 @@ func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
 		codes = append(codes, g.getGoType(t.Elem)...)
 	}
 	return codes
+}
+
+// creates a Go-safe identifier from a source string. Strips keywords
+func getLowerId(src string) string {
+	id := strcase.ToLowerCamel(src)
+	if id == "type" {
+		id = "_type"
+	}
+	return id
 }
