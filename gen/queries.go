@@ -13,6 +13,7 @@ import (
 func (g *Generator) generateQueries() {
 	f := NewFile(g.Package)
 
+	g.generateQueriesStruct(f)
 	q := g.Queries
 	//spew.Dump(q)
 	for _, o := range q.Operations {
@@ -30,6 +31,20 @@ func (g *Generator) generateQueries() {
 	}
 }
 
+func (g *Generator) generateQueriesStruct(f *File) {
+	f.Type().Id("Queries").Struct(
+		Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
+	)
+
+	f.Func().Params(
+		Id("q").Op("*").Id("Queries"),
+	).Id("SetClient").Params(
+		Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
+	).Block(
+		Id("q").Dot("client").Op("=").Id("client"),
+	)
+}
+
 func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) {
 	//fmt.Println(o.Name)
 	//fmt.Println(o.Operation)
@@ -43,7 +58,18 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 		fmt.Println("\t", v.Variable)
 	}
 
-	funcz := Func().Id(id).ParamsFunc(
+	var opType []Code
+	var selectionName string
+	if field, ok := o.SelectionSet[0].(*ast.Field); ok {
+		selectionName = strcase.ToCamel(field.Name)
+		opType = g.getGoType(field.Definition.Type)
+	} else {
+		opType = []Code{Interface()}
+	}
+
+	funcz := Func().Params(
+		Id("q").Op("*").Id("Queries"),
+	).Id(id).ParamsFunc(
 		func(pg *Group) {
 			for _, v := range o.VariableDefinitions {
 				varId := getLowerId(v.Variable)
@@ -51,19 +77,39 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 			}
 		},
 	).ParamsFunc(func(pg *Group) {
-		if field, ok := o.SelectionSet[0].(*ast.Field); ok {
-			pg.Add(g.getGoType(field.Definition.Type)...)
-		} else {
-			pg.Add(Interface())
-		}
+		pg.Add(opType...)
 		pg.Add(Error())
 	}).BlockFunc(
 		func(bg *Group) {
-			bg.Add(Id("q").Op(":=").StructFunc(func(sg *Group) {
+			bg.Add(Id("query").Op(":=").StructFunc(func(sg *Group) {
 				g.generateSelectionSet(sg, &o.SelectionSet)
 			})).Values()
 
 			g.generateOperationVariables(bg, o)
+
+			bg.Add(Err().Op(":=").Id("q").Dot("client").Dot("Query").Call(
+				Qual("context", "Background").Call(),
+				Op("&").Id("query"),
+				Id("variables"),
+			))
+
+			bg.Add(If().Err().Op("!=").Nil().Block(
+				Return(Nil(), Err()),
+			))
+
+			bg.Add(List(Id("bytes"), Err()).Op(":=").Qual("encoding/json", "Marshal").Call(Id("query").Dot(selectionName)))
+			bg.Add(If().Err().Op("!=").Nil().Block(
+				Return(Nil(), Err()),
+			))
+
+			bg.Add(Var().Id("data").Add(opType...))
+
+			bg.Add(Err().Op("=").Qual("encoding/json", "Unmarshal").Call(Id("bytes"), Op("&").Id("data")))
+			bg.Add(If().Err().Op("!=").Nil().Block(
+				Return(Nil(), Err()),
+			))
+
+			bg.Add(Return(Id("data"), Nil()))
 
 		})
 
@@ -111,7 +157,6 @@ func (g *Generator) generateSelectionSet(group *Group, set *ast.SelectionSet) {
 
 		}
 	}
-
 }
 
 func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDefinition) {
@@ -120,7 +165,19 @@ func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDef
 		fmt.Println("variables")
 		fmt.Println("\t", v.Variable)
 
-		d[Lit(v.Variable)] = Id(getLowerId(v.Variable))
+		if g.typeNameIsScalar(v.Type.Name()) {
+			d[Lit(v.Variable)] = Id(getScalarContructorName(v.Type.Name())).Parens(Id(getLowerId(v.Variable)))
+		} else {
+			d[Lit(v.Variable)] = Id(getLowerId(v.Variable))
+		}
+
 	}
 	group.Add(Id("variables").Op(":=").Map(String()).Interface().Values(d))
+}
+
+func (g *Generator) typeNameIsScalar(name string) bool {
+	if t, ok := g.Schema.Types[name]; ok {
+		return t.Kind == ast.Scalar
+	}
+	return false
 }

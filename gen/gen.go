@@ -130,11 +130,7 @@ func (g *Generator) generateTypes() {
 
 		switch t.Kind {
 		case ast.Scalar:
-			id := getTypeName(t)
-			if id == "string" {
-				continue // skip
-			}
-			scalars.Type().Id(id).String().Comment("all scalars are treated as strings")
+			g.generateScalarDefinition(scalars, t)
 		case ast.Object:
 			g.generateTypeDefinition(objects, t)
 		case ast.Interface:
@@ -147,6 +143,21 @@ func (g *Generator) generateTypes() {
 			g.generateTypeDefinition(input, t)
 		}
 	}
+}
+func (g *Generator) generateScalarDefinition(f *File, t *ast.Definition) error {
+	id := getLowerId(t.Name)
+
+	if id != "string" {
+		f.Type().Id(id).String().Comment("all scalars are treated as strings")
+	}
+	f.Func().Id(getScalarContructorName(id)).Params(
+		Id("val").String(),
+	).Params(
+		Id(id),
+	).Block(
+		Return(Id(id).Parens(Id("val"))),
+	)
+	return nil
 }
 
 func (g *Generator) generateTypeDefinition(f *File, t *ast.Definition) error {
@@ -170,7 +181,7 @@ func (g *Generator) generateTypeDefinition(f *File, t *ast.Definition) error {
 
 func (g *Generator) generateEnumDefinition(f *File, t *ast.Definition) error {
 	enumTypeName := strcase.ToCamel(t.Name)
-	f.Type().Id(enumTypeName).Int()
+	f.Type().Id(enumTypeName).Int8()
 
 	values := make([]Code, len(t.EnumValues))
 
@@ -215,6 +226,8 @@ var typeMap map[string]string = map[string]string{
 	"numeric": "float32",
 	"float":   "float32",
 	"Int":     "int",
+	"uuid":    "string",
+	"json":    "map[string]interface{}",
 }
 
 func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
@@ -253,8 +266,12 @@ func typeIsArray(t *ast.Type) bool {
 // creates a Go-safe identifier from a source string. Strips keywords
 func getLowerId(src string) string {
 	id := strcase.ToLowerCamel(src)
-	if id == "type" {
-		id = "_type"
+	if id == "type" || id == "json" {
+		return "_" + id
 	}
 	return id
+}
+
+func getScalarContructorName(name string) string {
+	return "New" + strcase.ToCamel(name)
 }
