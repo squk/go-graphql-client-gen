@@ -3,13 +3,11 @@ package gen
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"sort"
-	"strings"
 
 	"github.com/iancoleman/strcase"
-	"github.com/vektah/gqlparser"
-	"github.com/vektah/gqlparser/ast"
+	"github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 
 	. "github.com/dave/jennifer/jen"
 )
@@ -18,7 +16,10 @@ type Generator struct {
 	Package string // package name for generated files
 
 	Schema       *ast.Schema
-	SchemaSource string
+	schemaSource string
+
+	Queries       *ast.QueryDocument
+	queriesSource string
 }
 
 type GeneratorOption func(*Generator)
@@ -52,7 +53,7 @@ func WithPackage(pkg string) GeneratorOption {
 
 func WithSchema(schema string) GeneratorOption {
 	return func(g *Generator) {
-		g.SchemaSource = schema
+		g.schemaSource = schema
 
 		src := &ast.Source{
 			Name:    "schema",
@@ -76,6 +77,28 @@ func WithSchemaFile(filename string) GeneratorOption {
 		}
 
 		WithSchema(string(b))(g)
+	}
+}
+
+func WithQueries(queries string) GeneratorOption {
+	return func(g *Generator) {
+		g.queriesSource = queries
+
+		q, err := gqlparser.LoadQuery(g.Schema, queries)
+		if err != nil {
+			panic(err)
+		}
+		g.Queries = q
+	}
+}
+
+func WithQueriesFile(filename string) GeneratorOption {
+	return func(g *Generator) {
+		b, err := ioutil.ReadFile(filename)
+		if err != nil {
+			panic(err)
+		}
+		WithQueries(string(b))(g)
 	}
 }
 
@@ -123,46 +146,6 @@ func (g *Generator) generateTypes() {
 		case ast.InputObject:
 			g.generateTypeDefinition(input, t)
 		}
-	}
-}
-
-func (g *Generator) generateQueries() {
-	f := NewFile(g.Package)
-	defer f.Save("types/queries.go")
-
-	fields := g.Schema.Query.Fields
-	sort.SliceStable(fields, func(i, j int) bool {
-		return strings.Compare(fields[i].Name, fields[j].Name) == -1
-	})
-
-	for _, field := range fields {
-		// generate funciton comments
-		var comment string
-		comment += field.Description
-		for _, arg := range field.Arguments {
-			argId := getLowerId(arg.Name)
-			comment += fmt.Sprintf("\n\t%s - %s", argId, arg.Description)
-		}
-		f.Comment(comment)
-
-		// generate function
-		id := strcase.ToCamel(field.Name)
-		funcz := Func().Id(id).ParamsFunc(
-			func(pg *Group) {
-				for _, arg := range field.Arguments {
-					argId := getLowerId(arg.Name)
-					pg.Add(Id(argId).Add(g.getGoType(arg.Type)...)) //.Comment(arg.Description))
-
-				}
-			},
-		).Params(Op("*").Id(id), Error()).Block(
-		//Qual("github.com/opentracing/opentracing-go", "StartSpanFromContext").Call().Comment("Import is automatically added."),
-		)
-
-		fmt.Println(funcz.Render(os.Stdout))
-		//fmt.Printf("%#v\n\n", c)
-
-		f.Add(funcz)
 	}
 }
 
@@ -235,13 +218,13 @@ var typeMap map[string]string = map[string]string{
 }
 
 func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
-	if !t.NonNull && t.NamedType != "" {
+	if !t.NonNull {
 		codes = append(codes, Op("*"))
 	}
 
 	var name string
 
-	if t.NamedType == "" { // array
+	if typeIsArray(t) {
 		codes = append(codes, Index())
 	} else if n, ok := typeMap[t.NamedType]; ok { // build-int go type?
 		name = n
@@ -261,6 +244,10 @@ func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
 		codes = append(codes, g.getGoType(t.Elem)...)
 	}
 	return codes
+}
+
+func typeIsArray(t *ast.Type) bool {
+	return t.NamedType == ""
 }
 
 // creates a Go-safe identifier from a source string. Strips keywords
