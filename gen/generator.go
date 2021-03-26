@@ -43,7 +43,7 @@ func NewGenerator(opts ...GeneratorOption) *Generator {
 
 func (g *Generator) Run() {
 	g.generateTypes()
-	g.generateQueries()
+	g.generateOperations()
 }
 
 func (g *Generator) generateTypes() {

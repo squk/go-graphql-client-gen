@@ -11,56 +11,48 @@ import (
 	. "github.com/dave/jennifer/jen"
 )
 
-func (g *Generator) generateQueries() {
+func (g *Generator) generateOperations() {
 	f := NewFile(g.Package)
 
-	g.generateQueriesStruct(f)
+	g.generateOperationsStruct(f)
 	q := g.Queries
-	//spew.Dump(q)
 	for _, o := range q.Operations {
 		code := g.generateOperation(o)
 		f.Add(code...)
 	}
 
-	//fields := g.Schema.Query.Fields
-	//sort.SliceStable(fields, func(i, j int) bool {
-	//return strings.Compare(fields[i].Name, fields[j].Name) == -1
-	//})
-	err := f.Save("types/queries.go")
+	err := f.Save("types/operations.go")
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func (g *Generator) generateQueriesStruct(f *File) {
-	f.Type().Id("Queries").Struct(
-		Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
-	)
+func (g *Generator) generateOperationsStruct(f *File) {
+	for _, name := range []string{"Queries", "Mutations"} {
+		f.Type().Id(name).Struct(
+			Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
+		)
 
-	f.Func().Params(
-		Id("q").Op("*").Id("Queries"),
-	).Id("SetClient").Params(
-		Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
-	).Block(
-		Id("q").Dot("client").Op("=").Id("client"),
-	)
+		f.Func().Params(
+			Id("q").Op("*").Id(name),
+		).Id("SetClient").Params(
+			Id("client").Op("*").Qual("github.com/hasura/go-graphql-client", "Client"),
+		).Block(
+			Id("q").Dot("client").Op("=").Id("client"),
+		)
+	}
 }
 
 func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) {
-	//fmt.Println(o.Name)
-	//fmt.Println(o.Operation)
+	operationKind := string(o.Operation)
+	receiverType := strcase.ToCamel(operationKind)
+	receiverId := string(operationKind[0])
 
 	id := strcase.ToCamel(o.Name)
-	//for t, _ := range g.Schema.PossibleTypes {
-	//spew.Dump(t)
-	//}
-	for _, v := range o.VariableDefinitions {
-		fmt.Println("variables")
-		fmt.Println("\t", v.Variable)
-	}
-
 	var opType []Code
 	var selectionName string
+
+	// we don't support multiple top level fields in query selection sets yet
 	if field, ok := o.SelectionSet[0].(*ast.Field); ok {
 		selectionName = strcase.ToCamel(field.Name)
 		opType = g.getGoType(field.Definition.Type)
@@ -69,7 +61,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 	}
 
 	funcz := Func().Params(
-		Id("q").Op("*").Id("Queries"),
+		Id(receiverId).Op("*").Id(receiverType),
 	).Id(id).ParamsFunc(
 		func(pg *Group) {
 			for _, v := range o.VariableDefinitions {
@@ -82,15 +74,15 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 		pg.Add(Error())
 	}).BlockFunc(
 		func(bg *Group) {
-			bg.Add(Id("query").Op(":=").StructFunc(func(sg *Group) {
+			bg.Add(Id(operationKind).Op(":=").StructFunc(func(sg *Group) {
 				g.generateSelectionSet(sg, &o.SelectionSet)
 			})).Values()
 
 			g.generateOperationVariables(bg, o)
 
-			bg.Add(Err().Op(":=").Id("q").Dot("client").Dot("Query").Call(
+			bg.Add(Err().Op(":=").Id(receiverId).Dot("client").Dot(receiverType).Call(
 				Qual("context", "Background").Call(),
-				Op("&").Id("query"),
+				Op("&").Id(operationKind),
 				Id("variables"),
 			))
 
@@ -98,7 +90,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 				Return(Nil(), Err()),
 			))
 
-			bg.Add(List(Id("bytes"), Err()).Op(":=").Qual("encoding/json", "Marshal").Call(Id("query").Dot(selectionName)))
+			bg.Add(List(Id("bytes"), Err()).Op(":=").Qual("encoding/json", "Marshal").Call(Id(operationKind).Dot(selectionName)))
 			bg.Add(If().Err().Op("!=").Nil().Block(
 				Return(Nil(), Err()),
 			))
@@ -120,7 +112,6 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 func (g *Generator) generateSelectionSet(group *Group, set *ast.SelectionSet) {
 	for _, selection := range *set {
 		if field, ok := selection.(*ast.Field); ok {
-			//fmt.Println("\t", field.Name)
 			g.generateFields(group, field)
 		} else if fragment, ok := selection.(*ast.FragmentSpread); ok {
 			g.generateFragmentSpread(group, fragment)
@@ -132,7 +123,6 @@ func (g *Generator) generateSelectionSet(group *Group, set *ast.SelectionSet) {
 
 func (g *Generator) generateFragmentSpread(group *Group, fragment *ast.FragmentSpread) {
 	spew.Dump(fragment.Name)
-	fmt.Println(fragment.Definition)
 	g.generateSelectionSet(group, &fragment.Definition.SelectionSet)
 }
 
@@ -175,9 +165,6 @@ func (g *Generator) generateFields(group *Group, field *ast.Field) {
 func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDefinition) {
 	d := Dict{}
 	for _, v := range o.VariableDefinitions {
-		fmt.Println("variables")
-		fmt.Println("\t", v.Variable)
-
 		if g.typeNameIsScalar(v.Type.Name()) {
 			d[Lit(v.Variable)] = Id(getScalarContructorName(v.Type.Name())).Parens(Id(getLowerId(v.Variable)))
 		} else {
