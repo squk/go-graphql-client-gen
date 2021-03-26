@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/iancoleman/strcase"
 	"github.com/vektah/gqlparser/v2/ast"
 
@@ -117,46 +118,58 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 }
 
 func (g *Generator) generateSelectionSet(group *Group, set *ast.SelectionSet) {
-	fmt.Println("selections")
 	for _, selection := range *set {
 		if field, ok := selection.(*ast.Field); ok {
-			fmt.Println("\t", field.Name)
-			stmt := group.Id(strcase.ToCamel(field.Name))
-
-			gqlId := field.Name
-
-			// add arguments to `gql` tag
-			if len(field.Arguments) != 0 {
-				args := make([]string, len(field.Arguments))
-				for i, a := range field.Arguments {
-					args[i] = fmt.Sprintf("%s: %s", a.Name, a.Value.String())
-
-				}
-				gqlId += fmt.Sprintf("(%s)", strings.Join(args, ","))
-			}
-
-			// type is not nested, get Go type and bail
-			if len(field.SelectionSet) == 0 {
-				if field.Definition != nil {
-					stmt.Add(g.getGoType(field.Definition.Type)...)
-				}
-			} else { // generate nested struct using recursion
-				if typeIsArray(field.Definition.Type) {
-					stmt.Index()
-				}
-				stmt.StructFunc(func(sg *Group) {
-					g.generateSelectionSet(sg, &field.SelectionSet)
-				})
-			}
-
-			tags := map[string]string{
-				"graphql": gqlId,
-				"json":    fmt.Sprintf("%s,%s", field.Name, "omitempty"),
-			}
-			stmt.Tag(tags)
-
+			//fmt.Println("\t", field.Name)
+			g.generateFields(group, field)
+		} else if fragment, ok := selection.(*ast.FragmentSpread); ok {
+			g.generateFragmentSpread(group, fragment)
+		} else if fragment, ok := selection.(*ast.InlineFragment); ok {
+			fmt.Printf("inline fragments not supported - %+v", fragment)
 		}
 	}
+}
+
+func (g *Generator) generateFragmentSpread(group *Group, fragment *ast.FragmentSpread) {
+	spew.Dump(fragment.Name)
+	fmt.Println(fragment.Definition)
+	g.generateSelectionSet(group, &fragment.Definition.SelectionSet)
+}
+
+func (g *Generator) generateFields(group *Group, field *ast.Field) {
+	stmt := group.Id(strcase.ToCamel(field.Name))
+
+	gqlId := field.Name
+
+	// add arguments to `gql` tag
+	if len(field.Arguments) != 0 {
+		args := make([]string, len(field.Arguments))
+		for i, a := range field.Arguments {
+			args[i] = fmt.Sprintf("%s: %s", a.Name, a.Value.String())
+
+		}
+		gqlId += fmt.Sprintf("(%s)", strings.Join(args, ","))
+	}
+
+	// type is not nested, get Go type and bail
+	if len(field.SelectionSet) == 0 {
+		if field.Definition != nil {
+			stmt.Add(g.getGoType(field.Definition.Type)...)
+		}
+	} else { // generate nested struct using recursion
+		if typeIsArray(field.Definition.Type) {
+			stmt.Index()
+		}
+		stmt.StructFunc(func(sg *Group) {
+			g.generateSelectionSet(sg, &field.SelectionSet)
+		})
+	}
+
+	tags := map[string]string{
+		"graphql": gqlId,
+		"json":    fmt.Sprintf("%s,%s", field.Name, "omitempty"),
+	}
+	stmt.Tag(tags)
 }
 
 func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDefinition) {
