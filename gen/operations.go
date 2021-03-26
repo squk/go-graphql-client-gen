@@ -184,8 +184,15 @@ func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDef
 		variable := v.Variable
 		typeName := v.Type.Name()
 
-		if g.typeNameIsScalar(typeName) && !isGoKeyword(getLowerId(typeName)) {
-			d[Lit(variable)] = Id(getScalarContructorName(typeName)).Parens(Id(getLowerId(variable)))
+		if g.typeNameIsScalar(typeName) {
+			if isHasuraClientScalar(typeName) {
+				conversion := Qual("github.com/hasura/go-graphql-client", typeName)
+				d[Lit(variable)] = conversion.Parens(Id(getLowerId(variable)))
+			} else if !isGoKeyword(getLowerId(typeName)) {
+				d[Lit(variable)] = Id(getScalarContructorName(typeName)).Parens(Id(getLowerId(variable)))
+			} else {
+				fmt.Println("whoops", typeName)
+			}
 		} else {
 			d[Lit(variable)] = Id(getLowerId(variable))
 		}

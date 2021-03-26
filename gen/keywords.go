@@ -43,3 +43,20 @@ func isGoKeyword(id string) bool {
 	}
 	return false
 }
+
+var hasuraClientScalars []string = []string{
+	"Boolean",
+	"Float",
+	"ID",
+	"Int",
+	"String",
+}
+
+func isHasuraClientScalar(id string) bool {
+	for _, kw := range hasuraClientScalars {
+		if id == kw {
+			return true
+		}
+	}
+	return false
+}
