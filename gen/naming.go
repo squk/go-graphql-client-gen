@@ -23,8 +23,12 @@ var typeMap map[string]string = map[string]string{
 	"numeric": "float32",
 	"float":   "float32",
 	"Int":     "int",
-	"uuid":    "string",
 	"json":    "map[string]interface{}",
+}
+
+func isMappableScalar(id string) bool {
+	_, ok := typeMap[id]
+	return ok
 }
 
 // getGoType crawls the AST and returns a Go equivalent type as Jennifer code
@@ -37,7 +41,7 @@ func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
 
 	if typeIsArray(t) {
 		codes = append(codes, Index())
-	} else if n, ok := typeMap[t.NamedType]; ok { // build-int go type?
+	} else if n, ok := typeMap[t.NamedType]; ok { // build-in go type?
 		name = n
 	} else {
 		// look up the typename in schema and use the same generated type

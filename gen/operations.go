@@ -45,8 +45,17 @@ func (g *Generator) generateOperationsStruct(f *File) {
 
 func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) {
 	operationKind := string(o.Operation)
-	receiverType := strcase.ToCamel(operationKind)
 	receiverId := string(operationKind[0])
+
+	var clientMethod string // which method to call on go-graphql-client
+	var receiverType string // which struct to make a receiver of this func
+	if o.Operation == ast.Query {
+		clientMethod = "Query"
+		receiverType = "Queries"
+	} else if o.Operation == ast.Mutation {
+		clientMethod = "Mutate"
+		receiverType = "Mutations"
+	}
 
 	id := strcase.ToCamel(o.Name)
 	var opType []Code
@@ -62,14 +71,18 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 
 	funcz := Func().Params(
 		Id(receiverId).Op("*").Id(receiverType),
-	).Id(id).ParamsFunc(
+	).Id(id).ParamsFunc( // params
 		func(pg *Group) {
 			for _, v := range o.VariableDefinitions {
 				varId := getLowerId(v.Variable)
-				pg.Add(Id(varId).Add(g.getGoType(v.Type)...)) //.Comment(arg.Description))
+				if v.Definition.Kind == ast.Scalar {
+					pg.Add(Id(varId).String())
+				} else {
+					pg.Add(Id(varId).Add(g.getGoType(v.Type)...)) //.Comment(arg.Description))
+				}
 			}
 		},
-	).ParamsFunc(func(pg *Group) {
+	).ParamsFunc(func(pg *Group) { // returns
 		pg.Add(opType...)
 		pg.Add(Error())
 	}).BlockFunc(
@@ -80,7 +93,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 
 			g.generateOperationVariables(bg, o)
 
-			bg.Add(Err().Op(":=").Id(receiverId).Dot("client").Dot(receiverType).Call(
+			bg.Add(Err().Op(":=").Id(receiverId).Dot("client").Dot(clientMethod).Call(
 				Qual("context", "Background").Call(),
 				Op("&").Id(operationKind),
 				Id("variables"),
@@ -90,6 +103,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 				Return(Nil(), Err()),
 			))
 
+			// marshal our selection set into json
 			bg.Add(List(Id("bytes"), Err()).Op(":=").Qual("encoding/json", "Marshal").Call(Id(operationKind).Dot(selectionName)))
 			bg.Add(If().Err().Op("!=").Nil().Block(
 				Return(Nil(), Err()),
@@ -97,6 +111,8 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 
 			bg.Add(Var().Id("data").Add(opType...))
 
+			// unmarshal selection set into generated type so it's sparsely
+			// populated
 			bg.Add(Err().Op("=").Qual("encoding/json", "Unmarshal").Call(Id("bytes"), Op("&").Id("data")))
 			bg.Add(If().Err().Op("!=").Nil().Block(
 				Return(Nil(), Err()),
@@ -165,10 +181,13 @@ func (g *Generator) generateFields(group *Group, field *ast.Field) {
 func (g *Generator) generateOperationVariables(group *Group, o *ast.OperationDefinition) {
 	d := Dict{}
 	for _, v := range o.VariableDefinitions {
-		if g.typeNameIsScalar(v.Type.Name()) {
-			d[Lit(v.Variable)] = Id(getScalarContructorName(v.Type.Name())).Parens(Id(getLowerId(v.Variable)))
+		variable := v.Variable
+		typeName := v.Type.Name()
+
+		if g.typeNameIsScalar(typeName) && !isGoKeyword(getLowerId(typeName)) {
+			d[Lit(variable)] = Id(getScalarContructorName(typeName)).Parens(Id(getLowerId(variable)))
 		} else {
-			d[Lit(v.Variable)] = Id(getLowerId(v.Variable))
+			d[Lit(variable)] = Id(getLowerId(variable))
 		}
 
 	}

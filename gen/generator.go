@@ -86,9 +86,14 @@ func (g *Generator) generateTypes() {
 func (g *Generator) generateScalarDefinition(f *File, t *ast.Definition) error {
 	id := getLowerId(t.Name)
 
-	if id != "string" {
-		f.Type().Id(id).String().Comment("all scalars are treated as strings")
+	if isGoKeyword(id) {
+		return nil
 	}
+
+	// generate alias to string
+	f.Type().Id(id).String().Comment("all scalars are treated as strings")
+
+	// geneate constructor for out of package access
 	f.Func().Id(getScalarContructorName(id)).Params(
 		Id("val").String(),
 	).Params(
