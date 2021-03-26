@@ -12,7 +12,9 @@ get-graphql-schema https://my-graphql-endpoint.com/v1/graphql > schema.gql
 - [x] Type Generation
 - [x] Object Generation
 - [x] Query Generation
-- [ ] Fragment Support
-- [ ] Mutation Generation
+- [ ] Inline Fragments
+- [x] Fragment Spreads
+- [x] Mutation Generation
 - [ ] CLI commands
 - [ ] Custom type mapping/overrides
+- [ ] Multiple selection sets in the root operation
