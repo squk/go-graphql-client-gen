@@ -2,6 +2,8 @@ package gen
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/iancoleman/strcase"
@@ -42,6 +44,11 @@ func NewGenerator(opts ...GeneratorOption) *Generator {
 }
 
 func (g *Generator) Run() {
+	path := g.Package
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		os.Mkdir(path, os.ModeDir)
+	}
+
 	g.generateTypes()
 	g.generateOperations()
 }
@@ -52,10 +59,10 @@ func (g *Generator) generateTypes() {
 	input := NewFile(g.Package)
 	objects := NewFile(g.Package)
 
-	defer enums.Save("types/enums.go")
-	defer scalars.Save("types/scalars.go")
-	defer input.Save("types/input.go")
-	defer objects.Save("types/objects.go")
+	defer enums.Save(filepath.Join(g.Package, "enums.go"))
+	defer scalars.Save(filepath.Join(g.Package, "scalars.go"))
+	defer input.Save(filepath.Join(g.Package, "input.go"))
+	defer objects.Save(filepath.Join(g.Package, "objects.go"))
 
 	// iterate over map in alphabetical order so output is
 	// structured/repeatable

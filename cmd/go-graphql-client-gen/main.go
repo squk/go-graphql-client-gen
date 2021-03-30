@@ -33,22 +33,17 @@ func main() {
 				Value:       "operations.gql",
 				Usage:       "`FILE` of GQL operations to generate code for",
 				Destination: &operationsFile,
-				Required:    true,
 			},
 			&cli.StringFlag{
 				Name:        "package",
 				Value:       "types",
 				Usage:       "Golang package name to use for generation",
 				Destination: &packageName,
-				Required:    true,
 			},
 		},
 
 		Name:  "go-graphql-client-gen",
 		Usage: "Generate Golang GraphQL client code",
-		Action: func(c *cli.Context) error {
-			return nil
-		},
 	}
 
 	app.Commands = []*cli.Command{
@@ -65,6 +60,7 @@ func main() {
 				g := gen.NewGenerator(
 					gen.WithSchemaFile(schemaFile),
 					gen.WithQueriesFile(operationsFile),
+					gen.WithPackage(packageName),
 				)
 				g.Run()
 				return nil
