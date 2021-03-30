@@ -1,0 +1,24 @@
+query ContinentsShallow {
+  continents {
+    code
+    name
+  }
+}
+
+query ContinentsFiltered($continentCode: String!) {
+  continents(filter: {code: {eq: $continentCode}}) {
+    code
+    name
+    countries {
+      name
+    }
+  }
+}
+
+query Languages {
+  languages {
+    code
+    name
+    native
+  }
+}
