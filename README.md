@@ -16,5 +16,6 @@ get-graphql-schema https://my-graphql-endpoint.com/v1/graphql > schema.gql
 - [x] Fragment Spreads
 - [x] Mutation Generation
 - [ ] CLI commands
+- [ ] Remote schema support
 - [ ] Custom type mapping/overrides
 - [ ] Multiple selection sets in the root operation
