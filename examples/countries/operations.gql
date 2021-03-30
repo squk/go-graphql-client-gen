@@ -1,16 +1,39 @@
+fragment continentFragment on Continent {
+  code
+  name
+}
+
 query ContinentsShallow {
   continents {
-    code
-    name
+    ...continentFragment
   }
 }
 
+
 query ContinentsFiltered($continentCode: String!) {
   continents(filter: {code: {eq: $continentCode}}) {
-    code
-    name
+    ...continentFragment
     countries {
       name
+    }
+  }
+}
+
+query ContinentsFilteredDeep($continentCode: String!) {
+  continents (filter: {code: {eq: $continentCode}}) {
+    ...continentFragment
+    countries {
+      code
+      name
+      capital
+      languages {
+        code
+        name
+      }
+      states {
+        code
+        name
+      }
     }
   }
 }

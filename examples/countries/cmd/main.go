@@ -17,10 +17,29 @@ func main() {
 	mutations.SetClient(c)
 
 	fmt.Println("ContinentsFiltered Query")
-	continents, err := queries.ContinentsFiltered("152")
+	continents, err := queries.ContinentsFiltered("NA") // North America
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	b, _ := json.Marshal(continents)
+	fmt.Println(string(b))
+
+	fmt.Println("\nLanguages Query")
+	languages, err := queries.Languages()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	b, _ = json.Marshal(languages)
+	fmt.Println(string(b))
+
+	fmt.Println("\nContinentsFilteredDeep Query")
+	continents, err = queries.ContinentsFilteredDeep("AN") // Antarcitca
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	b, _ = json.Marshal(continents)
 	fmt.Println(string(b))
 }
