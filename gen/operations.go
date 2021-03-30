@@ -93,6 +93,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 
 			g.generateOperationVariables(bg, o)
 
+			bg.Add(Var().Id("data").Add(opType...))
 			bg.Add(Err().Op(":=").Id(receiverId).Dot("client").Dot(clientMethod).Call(
 				Qual("context", "Background").Call(),
 				Op("&").Id(operationKind),
@@ -100,22 +101,20 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 			))
 
 			bg.Add(If().Err().Op("!=").Nil().Block(
-				Return(Nil(), Err()),
+				Return(Id("data"), Err()),
 			))
 
 			// marshal our selection set into json
 			bg.Add(List(Id("bytes"), Err()).Op(":=").Qual("encoding/json", "Marshal").Call(Id(operationKind).Dot(selectionName)))
 			bg.Add(If().Err().Op("!=").Nil().Block(
-				Return(Nil(), Err()),
+				Return(Id("data"), Err()),
 			))
-
-			bg.Add(Var().Id("data").Add(opType...))
 
 			// unmarshal selection set into generated type so it's sparsely
 			// populated
 			bg.Add(Err().Op("=").Qual("encoding/json", "Unmarshal").Call(Id("bytes"), Op("&").Id("data")))
 			bg.Add(If().Err().Op("!=").Nil().Block(
-				Return(Nil(), Err()),
+				Return(Id("data"), Err()),
 			))
 
 			bg.Add(Return(Id("data"), Nil()))
