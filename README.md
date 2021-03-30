@@ -1,9 +1,11 @@
 # go-graphql-client-gen
 
 # Usage
-Make a local copy of your GraphQL schema
 ```sh
+# Make a local copy of your GraphQL schema
 get-graphql-schema https://my-graphql-endpoint.com/v1/graphql > schema.gql
+
+go-graphql-client-gen --operations operations.sql run
 ```
 
 # Roadmap
