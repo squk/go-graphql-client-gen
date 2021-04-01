@@ -17,7 +17,7 @@ go-graphql-client-gen --operations operations.sql run
 - [ ] Inline Fragments
 - [x] Fragment Spreads
 - [x] Mutation Generation
-- [-] CLI commands
+- [x] CLI commands
 - [ ] Remote schema support
 - [ ] Custom type mapping/overrides
 - [ ] Multiple selection sets in the root operation
