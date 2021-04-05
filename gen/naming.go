@@ -83,6 +83,6 @@ func getTypeName(t *ast.Definition) string {
 }
 
 // Create name for Scalar constructors. e.g. NewUuid()
-func getScalarContructorName(name string) string {
+func getScalarConstructorName(name string) string {
 	return "New" + strcase.ToCamel(name)
 }

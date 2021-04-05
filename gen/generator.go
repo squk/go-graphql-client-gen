@@ -101,7 +101,7 @@ func (g *Generator) generateScalarDefinition(f *File, t *ast.Definition) error {
 	f.Type().Id(id).String().Comment("all scalars are treated as strings")
 
 	// geneate constructor for out of package access
-	f.Func().Id(getScalarContructorName(id)).Params(
+	f.Func().Id(getScalarConstructorName(id)).Params(
 		Id("val").String(),
 	).Params(
 		Id(id),
