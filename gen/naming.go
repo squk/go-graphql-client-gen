@@ -10,7 +10,7 @@ import (
 // creates a Go-safe identifier from a source string. Strips keywords
 func getLowerId(src string) string {
 	id := strcase.ToLowerCamel(src)
-	if id == "type" || id == "json" { // TODO: make keywords more flexible
+	if isGoKeyword(id) {
 		return "_" + id
 	}
 	return id
