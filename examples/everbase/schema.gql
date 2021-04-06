@@ -1,0 +1,454 @@
+"""A city is a large human settlement."""
+type City {
+  """The continent."""
+  continent: Continent!
+
+  """The country."""
+  country: Country!
+
+  """The Geonames.org ID."""
+  geonamesID: Int!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """The location."""
+  location: Coordinates
+
+  """The name."""
+  name: String!
+
+  """The population."""
+  population: Int!
+
+  """The regular time zone (non-DST)."""
+  timeZone: TimeZone
+
+  """The time zone during daylight savings time."""
+  timeZoneDST: TimeZone
+}
+
+input CityWhere {
+  id: WhereString
+  name: WhereString
+  countryName: WhereString
+  population: WhereFloat
+}
+
+"""Information about the client that sent the request."""
+type Client {
+  """The IP address."""
+  ipAddress: IPAddress!
+
+  """The user agent."""
+  userAgent: String!
+}
+
+"""A continent is one of several very large landmasses."""
+type Continent {
+  """All countries located on the continent."""
+  countries: [Country!]!
+
+  """The Geonames.org ID."""
+  geonamesID: Int!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """The name."""
+  name: String!
+
+  """The population."""
+  population: Int!
+}
+
+input ContinentWhere {
+  id: WhereString
+  name: WhereString
+  geonamesId: WhereInt
+}
+
+"""Geographic coordinates."""
+type Coordinates {
+  """Latitude."""
+  lat: Float!
+
+  """Longitude"""
+  long: Float!
+}
+
+"""A sovereign state."""
+type Country {
+  """The ISO 3166-1 alpha-2 code."""
+  alpha2Code: String!
+
+  """The ISO 3166-1 alpha-3 code."""
+  alpha3Code: String!
+
+  """Calling codes."""
+  callingCodes: [String!]!
+
+  """The capital city."""
+  capital: City
+
+  """All cities of the country."""
+  cities: [City!]!
+
+  """The continent the country is located in."""
+  continent: Continent!
+
+  """All official currencies of the country."""
+  currencies: [Currency!]!
+
+  """The Geonames.org ID."""
+  geonamesID: Int!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """All official languages of the country."""
+  languages: [Language!]!
+
+  """The location."""
+  location: Coordinates
+
+  """The name."""
+  name: String!
+
+  """The population."""
+  population: Int!
+
+  """The general VAT rate."""
+  vatRate: Float
+}
+
+input CountryWhere {
+  id: WhereString
+  name: WhereString
+  alpha2Code: WhereString
+  alpha3Code: WhereString
+  population: WhereInt
+}
+
+type Currency {
+  """Convert `amount` (default 1) to currency with code specified in `to`"""
+  convert(amount: Float = 1, to: String!): Float
+
+  """Countries that use the currency."""
+  countries: [Country!]!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """The ISO 4217 code."""
+  isoCode: String!
+
+  """The name."""
+  name: String!
+
+  """Unit symbols."""
+  unitSymbols: [String!]!
+}
+
+input CurrencyWhere {
+  id: WhereString
+  name: WhereString
+  isoCode: WhereString
+}
+
+type DNSRecords {
+  a: [IPAddress!]!
+  aaaa: [IPAddress!]!
+  cname: [DomainName!]!
+  mx: [MXRecord!]!
+}
+
+"""Domain Name of the Domain Name System (DNS)."""
+type DomainName {
+  """Look up A records."""
+  a: [IPAddress!]!
+
+  """Look up AAAA records."""
+  aaaa: [IPAddress!]!
+
+  """Look up CNAME records."""
+  cname: [DomainName!]!
+
+  """Look up MX records."""
+  mx: [MXRecord!]!
+
+  """The domain name."""
+  name: String!
+  records: DNSRecords! @deprecated(reason: "Use fields on domainName itself")
+}
+
+type EmailAddress {
+  """The email address."""
+  address: String!
+
+  """The host as a domain name."""
+  domainName: DomainName!
+
+  """Host part of the email address (after the @)"""
+  host: String!
+
+  """Local part of the email address (before the @)"""
+  local: String!
+
+  """Whether this address is backed by a working mail server"""
+  ok: Boolean!
+  serviceProvider: EmailServiceProvider
+}
+
+type EmailServiceProvider {
+  """Whether this provider offers mailboxes without the need for signup"""
+  disposable: Boolean!
+
+  """The domain name."""
+  domainName: DomainName!
+
+  """Whether this provider offers mailboxes at no cost"""
+  free: Boolean!
+
+  """Whether this provider's SMTP service is working"""
+  smtpOk: Boolean!
+}
+
+type HTMLDocument {
+  """Get all nodes that match selector."""
+  all(selector: String!): [HTMLNode!]!
+
+  """Document body."""
+  body: HTMLNode!
+
+  """Get first node that matches selector."""
+  first(selector: String!): HTMLNode
+
+  """Raw HTML representation."""
+  html: String!
+
+  """Document title."""
+  title: String
+}
+
+type HTMLNode {
+  """Get all nodes that match selector."""
+  all(selector: String!): [HTMLNode!]!
+
+  """Attribute value."""
+  attribute(name: String!, selector: String): String
+
+  """Child nodes."""
+  children: [HTMLNode!]!
+
+  """Get first node that matches selector."""
+  first(selector: String!): HTMLNode
+
+  """Raw HTML representation."""
+  html: String!
+
+  """Next node."""
+  next: HTMLNode
+
+  """Parent node."""
+  parent: HTMLNode
+
+  """Previous node."""
+  previous: HTMLNode
+
+  """Inner text."""
+  text(selector: String): String
+}
+
+"""
+
+    Internet Protocol address. Can be either a IPv4 or a IPv6 address.
+
+    This product includes GeoLite2 data created by MaxMind, available from www.maxmind.com.
+  
+"""
+type IPAddress {
+  """The IP address."""
+  address: String!
+
+  """The city this IP address belongs to."""
+  city: City
+
+  """The country this IP address belongs to."""
+  country: Country
+
+  """The IP address type."""
+  type: IPAddressType!
+}
+
+enum IPAddressType {
+  IPv4
+  IPv6
+}
+
+type Language {
+  """The ISO 639-1 code."""
+  alpha2Code: String!
+
+  """The countries that use the language."""
+  countries: [Country!]!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """The name."""
+  name: String!
+}
+
+input LanguageWhere {
+  id: WhereString
+  name: WhereString
+  alpha2Code: WhereString
+}
+
+type Markdown {
+  """Convert markdown to HTML"""
+  html: String!
+}
+
+type MXRecord {
+  """The domain name."""
+  exchange: DomainName!
+
+  """The preference value."""
+  preference: Int!
+}
+
+"""Query is the root object of all queries."""
+type Query {
+  """Get cities."""
+  cities(limit: Int, skip: Int, where: CityWhere): [City!]!
+
+  """Get client info."""
+  client: Client!
+
+  """Get continents."""
+  continents(limit: Int, skip: Int, where: ContinentWhere): [Continent!]!
+
+  """Get countries."""
+  countries(limit: Int, skip: Int, where: CountryWhere): [Country!]!
+
+  """Get currencies."""
+  currencies(limit: Int, skip: Int, where: CurrencyWhere): [Currency!]!
+
+  """Create `DomainName` from string."""
+  domainName(name: String!): DomainName!
+
+  """Create `EmailAddress` from string."""
+  emailAddress(address: String!): EmailAddress!
+
+  """Create `HTMLDocument` from string."""
+  htmlDocument(html: String!): HTMLDocument!
+
+  """Create `IPAddress` from string."""
+  ipAddress(address: String!): IPAddress!
+
+  """Get languages."""
+  languages(limit: Int, skip: Int, where: LanguageWhere): [Language!]!
+
+  """Create `Markdown` from string."""
+  markdown(text: String!): Markdown!
+  random(cacheBuster: String): Random!
+
+  """Get time zones."""
+  timeZones(limit: Int, skip: Int, where: TimeZoneWhere): [TimeZone!]!
+
+  """Create `URL` from string."""
+  url(url: String!): URL!
+}
+
+"""Cryptographically secure random number generator."""
+type Random {
+  """Generate a float."""
+  float(high: Float = 18437736874454810000, low: Float = -1.7976931348623157e+308): Int!
+
+  """Generate a integer."""
+  int(high: Int = 2147483647, low: Int = -2147483648): Int!
+
+  """Generate a string."""
+  string(length: Int = 16): String!
+}
+
+"""Time zone offset from UTC."""
+type TimeZone {
+  """Cities in this time zone."""
+  cities: [City!]!
+
+  """The Wikidata ID."""
+  id: String!
+
+  """The name."""
+  name: String!
+
+  """The UTC offset."""
+  offset: Float!
+}
+
+input TimeZoneWhere {
+  id: WhereString
+  name: WhereString
+  offset: WhereFloat
+}
+
+"""
+Uniform Resource Locator (URL) in the form `<scheme>://<host><:port>/<path>?<query>`.
+"""
+type URL {
+  """The host as a domain name."""
+  domainName: DomainName
+
+  """The host."""
+  host: String!
+
+  """
+  Fetches the URL and returns `HTMLDocument`. Does not resolve redirects.
+  Returns an error if the request fails or null if the response is not a HTML document.
+  """
+  htmlDocument: HTMLDocument
+
+  """The path."""
+  path: String
+
+  """The port."""
+  port: Int
+
+  """The query."""
+  query: String
+
+  """The scheme."""
+  scheme: String!
+
+  """The full URL."""
+  url: String!
+}
+
+input WhereFloat {
+  eq: Float
+  neq: Float
+  in: [Float!]
+  nin: [Float!]
+  lt: Float
+  gt: Float
+}
+
+input WhereInt {
+  eq: Int
+  neq: Int
+  in: [Int!]
+  nin: [Int!]
+  lt: Int
+  gt: Int
+}
+
+input WhereString {
+  eq: String
+  neq: String
+  in: [String!]
+  nin: [String!]
+}
+

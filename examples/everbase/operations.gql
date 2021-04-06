@@ -1,0 +1,43 @@
+query VisitorGeneralInfo {
+  client {
+    ipAddress {
+      address
+      city {
+        name
+        population
+      }
+      country {
+        name
+        population
+        capital {
+          name
+        }
+        currencies {
+          name
+        }
+      }
+    }
+  }
+}
+
+query ConvertUSDtoEUR($amount: Float! = 1){
+  currencies(where: {isoCode: {eq: "USD"}}) {
+    name
+    toEUR: convert(amount: $amount, to: "EUR")
+  }
+}
+
+query ExchangeRateForVisitorsCurrency {
+  client {
+    ipAddress {
+      country {
+        name
+        currencies {
+          name
+          toUSD: convert(amount: 1, to: "USD")
+          toEUR: convert(amount: 1, to: "EUR")
+        }
+      }
+    }
+  }
+}
