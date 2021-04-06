@@ -62,7 +62,7 @@ func (g *Generator) getGoType(t *ast.Type) (codes []Code) {
 }
 
 // getTypeName converts an ast.Definition to a string based of its kind to
-// match Goland style casing
+// match Golang style casing
 func getTypeName(t *ast.Definition) string {
 	switch t.Kind {
 	case ast.Scalar:

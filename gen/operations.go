@@ -58,6 +58,11 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 	}
 
 	id := strcase.ToCamel(o.Name)
+	if id == "" {
+		fmt.Println("unnamed operations are not supported")
+		return *Comment("unnamed operations are not supported")
+	}
+
 	var opType []Code
 	var selectionName string
 
