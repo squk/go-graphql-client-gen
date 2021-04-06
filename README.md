@@ -1,6 +1,7 @@
 # go-graphql-client-gen
 
 # Usage
+
 ```sh
 # Make a local copy of your GraphQL schema
 get-graphql-schema https://my-graphql-endpoint.com/v1/graphql > schema.gql
@@ -9,11 +10,13 @@ go-graphql-client-gen --operations operations.sql run
 ```
 
 # Roadmap
+
 - [x] Type Mapping
 - [x] Scalar Generation
 - [x] Type Generation
 - [x] Object Generation
 - [x] Query Generation
+- [x] Field Aliasing
 - [ ] Inline Fragments
 - [x] Fragment Spreads
 - [x] Mutation Generation
@@ -23,16 +26,19 @@ go-graphql-client-gen --operations operations.sql run
 - [ ] Multiple selection sets in the root operation
 
 # Examples
+
 Visit the [examples](examples/) directory for various working examples.
 
 # Inline Examples
 
 ## Countries
+
 Schema from https://countries.trevorblades.com/
 Full schema is located at [examples/countries/schema.gql](examples/countries/schema.gql)
 Generated types and operations at [examples/countries/types](examples/countries/types)
 
-### Input Schema(truncated for brevity): 
+### Input Schema(truncated for brevity):
+
 ```graphql
 type Continent {
   code: ID!
@@ -69,6 +75,7 @@ type State {
 ```
 
 ### Output Golang
+
 ```go
 type Continent struct {
 	Code      id        `graphql:"code" json:"code,omitempty"`           // code ID!

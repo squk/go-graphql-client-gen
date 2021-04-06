@@ -147,9 +147,14 @@ func (g *Generator) generateFragmentSpread(group *Group, fragment *ast.FragmentS
 }
 
 func (g *Generator) generateFields(group *Group, field *ast.Field) {
-	stmt := group.Id(strcase.ToCamel(field.Name))
+	gqlID := field.Name
 
-	gqlId := field.Name
+	goID := strcase.ToCamel(field.Alias)
+	if goID == "" {
+		goID = strcase.ToCamel(field.Name)
+	}
+
+	stmt := group.Id(goID)
 
 	// add arguments to `gql` tag
 	if len(field.Arguments) != 0 {
@@ -158,7 +163,7 @@ func (g *Generator) generateFields(group *Group, field *ast.Field) {
 			args[i] = fmt.Sprintf("%s: %s", a.Name, a.Value.String())
 
 		}
-		gqlId += fmt.Sprintf("(%s)", strings.Join(args, ","))
+		gqlID += fmt.Sprintf("(%s)", strings.Join(args, ","))
 	}
 
 	// type is not nested, get Go type and bail
@@ -176,8 +181,8 @@ func (g *Generator) generateFields(group *Group, field *ast.Field) {
 	}
 
 	tags := map[string]string{
-		"graphql": gqlId,
-		"json":    fmt.Sprintf("%s,%s", field.Name, "omitempty"),
+		"graphql": gqlID,
+		"json":    fmt.Sprintf("%s,%s", strcase.ToSnake(goID), "omitempty"),
 	}
 	stmt.Tag(tags)
 }
