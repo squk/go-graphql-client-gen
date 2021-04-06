@@ -22,8 +22,9 @@ var typeMap map[string]string = map[string]string{
 	"string":  "string",
 	"numeric": "float32",
 	"float":   "float32",
+	"Float":   "float32",
 	"Int":     "int",
-	"json":    "map[string]interface{}",
+	"json":    "map[string]interface{}", // is this used?
 }
 
 func isMappableScalar(id string) bool {

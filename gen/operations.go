@@ -81,7 +81,7 @@ func (g *Generator) generateOperation(o *ast.OperationDefinition) (code []Code) 
 			for _, v := range o.VariableDefinitions {
 				varId := getLowerId(v.Variable)
 				if v.Definition.Kind == ast.Scalar {
-					pg.Add(Id(varId).String())
+					pg.Add(Id(varId).Add(g.getGoType(v.Type)...))
 				} else {
 					pg.Add(Id(varId).Add(g.getGoType(v.Type)...)) //.Comment(arg.Description))
 				}
@@ -147,11 +147,13 @@ func (g *Generator) generateFragmentSpread(group *Group, fragment *ast.FragmentS
 }
 
 func (g *Generator) generateFields(group *Group, field *ast.Field) {
-	gqlID := field.Name
+	var gqlID, goID string
 
-	goID := strcase.ToCamel(field.Alias)
-	if goID == "" {
+	if field.Alias == "" {
 		goID = strcase.ToCamel(field.Name)
+	} else {
+		gqlID = field.Name
+		goID = strcase.ToCamel(field.Alias)
 	}
 
 	stmt := group.Id(goID)
@@ -179,6 +181,9 @@ func (g *Generator) generateFields(group *Group, field *ast.Field) {
 			g.generateSelectionSet(sg, &field.SelectionSet)
 		})
 	}
+
+	//escape quotes and ticks since they will be wrapped in quotes in tags
+	gqlID = strings.ReplaceAll(gqlID, "\"", "\\\"")
 
 	tags := map[string]string{
 		"graphql": gqlID,
